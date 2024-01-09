@@ -1,4 +1,5 @@
 use crate::algorithm::Printer;
+use crate::comments::BeginSpan;
 use crate::iter::IterDelimited;
 use crate::path::PathKind;
 use crate::INDENT;
@@ -103,13 +104,13 @@ impl Printer {
 
     pub fn type_param_bound(&mut self, type_param_bound: &TypeParamBound) {
         match type_param_bound {
-            #![cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
             TypeParamBound::Trait(trait_bound) => {
                 let tilde_const = false;
                 self.trait_bound(trait_bound, tilde_const);
             }
             TypeParamBound::Lifetime(lifetime) => self.lifetime(lifetime),
             TypeParamBound::Verbatim(bound) => self.type_param_bound_verbatim(bound),
+            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
             _ => unimplemented!("unknown TypeParamBound"),
         }
     }
@@ -143,59 +144,8 @@ impl Printer {
         }
     }
 
-    #[cfg(not(feature = "verbatim"))]
     fn type_param_bound_verbatim(&mut self, bound: &TokenStream) {
         unimplemented!("TypeParamBound::Verbatim `{}`", bound);
-    }
-
-    #[cfg(feature = "verbatim")]
-    fn type_param_bound_verbatim(&mut self, tokens: &TokenStream) {
-        use syn::parse::{Parse, ParseStream, Result};
-        use syn::{parenthesized, token, Token};
-
-        enum TypeParamBoundVerbatim {
-            Ellipsis,
-            TildeConst(TraitBound),
-        }
-
-        impl Parse for TypeParamBoundVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
-                let content;
-                let (paren_token, content) = if input.peek(token::Paren) {
-                    (Some(parenthesized!(content in input)), &content)
-                } else {
-                    (None, input)
-                };
-                let lookahead = content.lookahead1();
-                if lookahead.peek(Token![~]) {
-                    content.parse::<Token![~]>()?;
-                    content.parse::<Token![const]>()?;
-                    let mut bound: TraitBound = content.parse()?;
-                    bound.paren_token = paren_token;
-                    Ok(TypeParamBoundVerbatim::TildeConst(bound))
-                } else if lookahead.peek(Token![...]) {
-                    content.parse::<Token![...]>()?;
-                    Ok(TypeParamBoundVerbatim::Ellipsis)
-                } else {
-                    Err(lookahead.error())
-                }
-            }
-        }
-
-        let bound: TypeParamBoundVerbatim = match syn::parse2(tokens.clone()) {
-            Ok(bound) => bound,
-            Err(_) => unimplemented!("TypeParamBound::Verbatim `{}`", tokens),
-        };
-
-        match bound {
-            TypeParamBoundVerbatim::Ellipsis => {
-                self.word("...");
-            }
-            TypeParamBoundVerbatim::TildeConst(trait_bound) => {
-                let tilde_const = true;
-                self.trait_bound(&trait_bound, tilde_const);
-            }
-        }
     }
 
     fn const_param(&mut self, const_param: &ConstParam) {
@@ -288,10 +238,14 @@ impl Printer {
     }
 
     fn where_predicate(&mut self, predicate: &WherePredicate) {
+        if let Some(span) = predicate.begin_span() {
+            self.flush_comments(span, false, false);
+        }
+
         match predicate {
-            #![cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
             WherePredicate::Type(predicate) => self.predicate_type(predicate),
             WherePredicate::Lifetime(predicate) => self.predicate_lifetime(predicate),
+            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
             _ => unimplemented!("unknown WherePredicate"),
         }
     }

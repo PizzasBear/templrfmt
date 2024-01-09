@@ -1,9 +1,12 @@
-use crate::algorithm::Printer;
 use crate::INDENT;
+use crate::{algorithm::Printer, comments::BeginSpan};
 use syn::{BinOp, Expr, Stmt};
 
 impl Printer {
     pub fn stmt(&mut self, stmt: &Stmt) {
+        if let Some(span) = stmt.begin_span() {
+            self.flush_comments(span, false, false);
+        }
         match stmt {
             Stmt::Local(local) => {
                 self.outer_attrs(&local.attrs);
@@ -82,45 +85,41 @@ impl Printer {
 
 pub fn add_semi(expr: &Expr) -> bool {
     match expr {
-        #![cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
         Expr::Assign(_) | Expr::Break(_) | Expr::Continue(_) | Expr::Return(_) | Expr::Yield(_) => {
             true
         }
-        Expr::Binary(expr) =>
-        {
-            match expr.op {
-                #![cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-                BinOp::AddAssign(_)
-                | BinOp::SubAssign(_)
-                | BinOp::MulAssign(_)
-                | BinOp::DivAssign(_)
-                | BinOp::RemAssign(_)
-                | BinOp::BitXorAssign(_)
-                | BinOp::BitAndAssign(_)
-                | BinOp::BitOrAssign(_)
-                | BinOp::ShlAssign(_)
-                | BinOp::ShrAssign(_) => true,
-                BinOp::Add(_)
-                | BinOp::Sub(_)
-                | BinOp::Mul(_)
-                | BinOp::Div(_)
-                | BinOp::Rem(_)
-                | BinOp::And(_)
-                | BinOp::Or(_)
-                | BinOp::BitXor(_)
-                | BinOp::BitAnd(_)
-                | BinOp::BitOr(_)
-                | BinOp::Shl(_)
-                | BinOp::Shr(_)
-                | BinOp::Eq(_)
-                | BinOp::Lt(_)
-                | BinOp::Le(_)
-                | BinOp::Ne(_)
-                | BinOp::Ge(_)
-                | BinOp::Gt(_) => false,
-                _ => unimplemented!("unknown BinOp"),
-            }
-        }
+        Expr::Binary(expr) => match expr.op {
+            BinOp::AddAssign(_)
+            | BinOp::SubAssign(_)
+            | BinOp::MulAssign(_)
+            | BinOp::DivAssign(_)
+            | BinOp::RemAssign(_)
+            | BinOp::BitXorAssign(_)
+            | BinOp::BitAndAssign(_)
+            | BinOp::BitOrAssign(_)
+            | BinOp::ShlAssign(_)
+            | BinOp::ShrAssign(_) => true,
+            BinOp::Add(_)
+            | BinOp::Sub(_)
+            | BinOp::Mul(_)
+            | BinOp::Div(_)
+            | BinOp::Rem(_)
+            | BinOp::And(_)
+            | BinOp::Or(_)
+            | BinOp::BitXor(_)
+            | BinOp::BitAnd(_)
+            | BinOp::BitOr(_)
+            | BinOp::Shl(_)
+            | BinOp::Shr(_)
+            | BinOp::Eq(_)
+            | BinOp::Lt(_)
+            | BinOp::Le(_)
+            | BinOp::Ne(_)
+            | BinOp::Ge(_)
+            | BinOp::Gt(_) => false,
+            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
+            _ => unimplemented!("unknown BinOp"),
+        },
         Expr::Group(group) => add_semi(&group.expr),
 
         Expr::Array(_)
@@ -156,6 +155,7 @@ pub fn add_semi(expr: &Expr) -> bool {
         | Expr::Verbatim(_)
         | Expr::While(_) => false,
 
+        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
         _ => false,
     }
 }
@@ -171,7 +171,6 @@ pub fn break_after(expr: &Expr) -> bool {
 
 fn remove_semi(expr: &Expr) -> bool {
     match expr {
-        #![cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
         Expr::ForLoop(_) | Expr::While(_) => true,
         Expr::Group(group) => remove_semi(&group.expr),
         Expr::If(expr) => match &expr.else_branch {
@@ -215,6 +214,7 @@ fn remove_semi(expr: &Expr) -> bool {
         | Expr::Verbatim(_)
         | Expr::Yield(_) => false,
 
+        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
         _ => false,
     }
 }

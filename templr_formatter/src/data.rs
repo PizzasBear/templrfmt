@@ -1,4 +1,5 @@
 use crate::algorithm::Printer;
+use crate::comments::BeginSpan;
 use crate::iter::IterDelimited;
 use crate::path::PathKind;
 use crate::INDENT;
@@ -6,6 +7,10 @@ use syn::{Field, Fields, FieldsUnnamed, Variant, VisRestricted, Visibility};
 
 impl Printer {
     pub fn variant(&mut self, variant: &Variant) {
+        if let Some(span) = variant.begin_span() {
+            self.flush_comments(span, false, false);
+        }
+
         self.outer_attrs(&variant.attrs);
         self.ident(&variant.ident);
         match &variant.fields {
@@ -18,6 +23,11 @@ impl Printer {
                     self.field(&field);
                     self.trailing_comma_or_space(field.is_last);
                 }
+                self.flush_comments(
+                    fields.brace_token.span.close(),
+                    fields.named.is_empty(),
+                    true,
+                );
                 self.offset(-INDENT);
                 self.end();
                 self.word("}");
@@ -42,11 +52,20 @@ impl Printer {
             self.field(&field);
             self.trailing_comma(field.is_last);
         }
+        self.flush_comments(
+            fields.paren_token.span.close(),
+            fields.unnamed.is_empty(),
+            true,
+        );
         self.offset(-INDENT);
         self.word(")");
     }
 
     pub fn field(&mut self, field: &Field) {
+        if let Some(span) = field.begin_span() {
+            self.flush_comments(span, false, false);
+        }
+
         self.outer_attrs(&field.attrs);
         self.visibility(&field.vis);
         if let Some(ident) = &field.ident {

@@ -12,7 +12,6 @@ use syn::{
 impl Printer {
     pub fn ty(&mut self, ty: &Type) {
         match ty {
-            #![cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
             Type::Array(ty) => self.type_array(ty),
             Type::BareFn(ty) => self.type_bare_fn(ty),
             Type::Group(ty) => self.type_group(ty),
@@ -28,6 +27,7 @@ impl Printer {
             Type::TraitObject(ty) => self.type_trait_object(ty),
             Type::Tuple(ty) => self.type_tuple(ty),
             Type::Verbatim(ty) => self.type_verbatim(ty),
+            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
             _ => unimplemented!("unknown Type"),
         }
     }
@@ -162,142 +162,8 @@ impl Printer {
         self.word(")");
     }
 
-    #[cfg(not(feature = "verbatim"))]
     fn type_verbatim(&mut self, ty: &TokenStream) {
         unimplemented!("Type::Verbatim `{}`", ty);
-    }
-
-    #[cfg(feature = "verbatim")]
-    fn type_verbatim(&mut self, tokens: &TokenStream) {
-        use syn::parse::{Parse, ParseStream, Result};
-        use syn::punctuated::Punctuated;
-        use syn::{token, FieldsNamed, Token, TypeParamBound};
-
-        enum TypeVerbatim {
-            Ellipsis,
-            AnonStruct(AnonStruct),
-            AnonUnion(AnonUnion),
-            DynStar(DynStar),
-            MutSelf(MutSelf),
-            NotType(NotType),
-        }
-
-        struct AnonStruct {
-            fields: FieldsNamed,
-        }
-
-        struct AnonUnion {
-            fields: FieldsNamed,
-        }
-
-        struct DynStar {
-            bounds: Punctuated<TypeParamBound, Token![+]>,
-        }
-
-        struct MutSelf {
-            ty: Option<Type>,
-        }
-
-        struct NotType {
-            inner: Type,
-        }
-
-        impl Parse for TypeVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
-                let lookahead = input.lookahead1();
-                if lookahead.peek(Token![struct]) {
-                    input.parse::<Token![struct]>()?;
-                    let fields: FieldsNamed = input.parse()?;
-                    Ok(TypeVerbatim::AnonStruct(AnonStruct { fields }))
-                } else if lookahead.peek(Token![union]) && input.peek2(token::Brace) {
-                    input.parse::<Token![union]>()?;
-                    let fields: FieldsNamed = input.parse()?;
-                    Ok(TypeVerbatim::AnonUnion(AnonUnion { fields }))
-                } else if lookahead.peek(Token![dyn]) {
-                    input.parse::<Token![dyn]>()?;
-                    input.parse::<Token![*]>()?;
-                    let bounds = input.parse_terminated(TypeParamBound::parse, Token![+])?;
-                    Ok(TypeVerbatim::DynStar(DynStar { bounds }))
-                } else if lookahead.peek(Token![mut]) {
-                    input.parse::<Token![mut]>()?;
-                    input.parse::<Token![self]>()?;
-                    let ty = if input.is_empty() {
-                        None
-                    } else {
-                        input.parse::<Token![:]>()?;
-                        let ty: Type = input.parse()?;
-                        Some(ty)
-                    };
-                    Ok(TypeVerbatim::MutSelf(MutSelf { ty }))
-                } else if lookahead.peek(Token![!]) {
-                    input.parse::<Token![!]>()?;
-                    let inner: Type = input.parse()?;
-                    Ok(TypeVerbatim::NotType(NotType { inner }))
-                } else if lookahead.peek(Token![...]) {
-                    input.parse::<Token![...]>()?;
-                    Ok(TypeVerbatim::Ellipsis)
-                } else {
-                    Err(lookahead.error())
-                }
-            }
-        }
-
-        let ty: TypeVerbatim = match syn::parse2(tokens.clone()) {
-            Ok(ty) => ty,
-            Err(_) => unimplemented!("Type::Verbatim `{}`", tokens),
-        };
-
-        match ty {
-            TypeVerbatim::Ellipsis => {
-                self.word("...");
-            }
-            TypeVerbatim::AnonStruct(ty) => {
-                self.cbox(INDENT);
-                self.word("struct {");
-                self.hardbreak_if_nonempty();
-                for field in &ty.fields.named {
-                    self.field(field);
-                    self.word(",");
-                    self.hardbreak();
-                }
-                self.offset(-INDENT);
-                self.end();
-                self.word("}");
-            }
-            TypeVerbatim::AnonUnion(ty) => {
-                self.cbox(INDENT);
-                self.word("union {");
-                self.hardbreak_if_nonempty();
-                for field in &ty.fields.named {
-                    self.field(field);
-                    self.word(",");
-                    self.hardbreak();
-                }
-                self.offset(-INDENT);
-                self.end();
-                self.word("}");
-            }
-            TypeVerbatim::DynStar(ty) => {
-                self.word("dyn* ");
-                for type_param_bound in ty.bounds.iter().delimited() {
-                    if !type_param_bound.is_first {
-                        self.word(" + ");
-                    }
-                    self.type_param_bound(&type_param_bound);
-                }
-            }
-            TypeVerbatim::MutSelf(bare_fn_arg) => {
-                self.word("mut self");
-                if let Some(ty) = &bare_fn_arg.ty {
-                    self.word(": ");
-                    self.ty(ty);
-                }
-            }
-            TypeVerbatim::NotType(ty) => {
-                self.word("!");
-                self.ty(&ty.inner);
-            }
-        }
     }
 
     pub fn return_type(&mut self, ty: &ReturnType) {

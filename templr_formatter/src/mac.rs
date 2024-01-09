@@ -13,9 +13,12 @@ impl Printer {
                 return;
             }
         }
-        #[cfg(feature = "verbatim")]
-        if ident.is_none() && self.standard_library_macro(mac, semicolon) {
-            return;
+        if ident.is_none() {
+            if self.standard_library_macro(mac, semicolon) {
+                return;
+            } else if self.templ_macro(mac, semicolon) {
+                return;
+            }
         }
         self.path(&mac.path, PathKind::Simple);
         self.word("!");
@@ -221,7 +224,6 @@ fn is_keyword(ident: &Ident) -> bool {
     }
 }
 
-#[cfg(feature = "verbatim")]
 mod standard_library {
     use crate::algorithm::Printer;
     use crate::iter::IterDelimited;

@@ -3,6 +3,7 @@
 
 use crate::ring::RingBuffer;
 use crate::{MARGIN, MIN_SPACE};
+use proc_macro2::Span;
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::VecDeque;
@@ -69,6 +70,8 @@ pub struct Printer {
     indent: usize,
     // Buffered indentation to avoid writing trailing whitespace
     pending_indentation: usize,
+
+    pub(crate) comment_span: Option<Span>,
 }
 
 #[derive(Clone)]
@@ -78,7 +81,7 @@ struct BufEntry {
 }
 
 impl Printer {
-    pub fn new() -> Self {
+    pub fn new(first_span: Option<Span>) -> Self {
         Printer {
             out: String::new(),
             space: MARGIN,
@@ -89,6 +92,7 @@ impl Printer {
             print_stack: Vec::new(),
             indent: 0,
             pending_indentation: 0,
+            comment_span: first_span,
         }
     }
 

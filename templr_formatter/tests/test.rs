@@ -5,7 +5,7 @@ use quote::quote;
 #[track_caller]
 fn test(tokens: TokenStream, expected: &str) {
     let syntax_tree: syn::File = syn::parse2(tokens).unwrap();
-    let pretty = prettyplease::unparse(&syntax_tree);
+    let pretty = templr_formatter::unparse(&syntax_tree);
     assert_eq!(pretty, expected);
 }
 
