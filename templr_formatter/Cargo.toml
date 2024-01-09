@@ -1,6 +1,9 @@
 [package]
 name = "templr_formatter"
 version = "0.1.0"
+description = "Formatter for the templr templates library"
+homepage = "https://github.com/PizzasBear/templrfmt"
+repository = "https://github.com/PizzasBear/templrfmt"
 license = "Apache-2.0"
 workspace = ".."
 readme = "../README.md"
