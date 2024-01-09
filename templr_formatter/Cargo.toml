@@ -14,6 +14,6 @@ syn = { version = "2.0", default-features = false, features = [
     "full",
     "visit",
 ] }
-templr_parser = "0.1"
+templr_parser = { git = "https://github.com/PizzasBear/templr" }
 quote = { version = "1.0", default-features = false }
 regex = "1.10"

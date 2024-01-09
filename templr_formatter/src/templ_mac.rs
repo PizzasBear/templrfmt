@@ -8,7 +8,7 @@ use crate::{
     algorithm::Printer,
     comments::{slow_begin_span, BeginSpan},
     path::PathKind,
-    INDENT,
+    stmt, INDENT,
 };
 
 impl Printer {
@@ -145,23 +145,13 @@ impl Printer {
                         self.ibox(0);
                     }
                     self.word("]");
-                    // self.cbox(INDENT);
-                    // self.word("[");
-                    // self.zerobreak();
-                    // self.ibox(0);
-                    // self.templ_nodes(nodes);
-                    // self.end();
-                    // self.zerobreak();
-                    // self.offset(-INDENT);
-                    // self.word("]");
-                    // self.end();
                 }
                 Node::Expr(block) => {
                     if space {
                         self.space();
                     }
-                    space = false;
-                    self.templ_block(block, true);
+                    space = true;
+                    self.templ_block(block);
                 }
                 Node::If(stmt) => {
                     self.templ_if(stmt, |slf, nodes| {
@@ -336,13 +326,13 @@ impl Printer {
                             Some(_) => self.word("?="),
                             None => self.word("="),
                         }
-                        self.templ_block(block, false);
+                        self.templ_block(block);
                     }
                     HtmlAttrValue::None => {}
                 }
             }
             Attr::Spread(block) => {
-                self.templ_block(block, false);
+                self.templ_block(block);
             }
             Attr::If(stmt) => self.templ_if(stmt, |slf, attrs| {
                 for attr in attrs {
@@ -509,33 +499,36 @@ impl Printer {
         self.end();
     }
 
-    fn templ_block(&mut self, block: &TemplrBlock, endbreak: bool) {
+    fn templ_block(&mut self, block: &TemplrBlock) {
         match block {
-            TemplrBlock::Valid(block) => match &*block.stmts {
-                [syn::Stmt::Expr(
-                    syn::Expr::Lit(syn::ExprLit {
-                        attrs,
-                        lit: syn::Lit::Str(lit),
-                    }),
-                    None,
-                )] if attrs.is_empty() => {
-                    self.word("{");
-                    self.lit_str(lit);
-                    self.word("}");
-                    if endbreak {
-                        self.space();
+            TemplrBlock::Valid(block) => {
+                self.cbox(INDENT);
+                self.word("{");
+                if !block.stmts.is_empty() {
+                    self.zerobreak();
+                    match block.stmts.as_slice() {
+                        [syn::Stmt::Expr(expr, None)] if stmt::break_after(expr) => {
+                            self.ibox(0);
+                            self.expr_beginning_of_line(expr, true);
+                            self.end();
+                            self.zerobreak();
+                        }
+                        _ => {
+                            for stmt in &block.stmts {
+                                self.stmt(stmt);
+                            }
+                        }
                     }
+                    self.flush_comments(
+                        block.brace_token.span.close(),
+                        block.stmts.is_empty(),
+                        true,
+                    );
+                    self.offset(-INDENT);
                 }
-                _ => {
-                    self.cbox(INDENT);
-                    self.small_block(block, &[]);
-                    if endbreak {
-                        self.space();
-                        self.offset(-INDENT);
-                    }
-                    self.end();
-                }
-            },
+                self.word("}");
+                self.end();
+            }
             TemplrBlock::Invalid { body, .. } => {
                 if !body.is_empty() {
                     self.word("{");
@@ -548,10 +541,6 @@ impl Printer {
                     self.offset(-INDENT);
                     self.end();
                     self.word("}");
-                    if endbreak {
-                        self.space();
-                        self.offset(-INDENT);
-                    }
                 }
             }
         }
