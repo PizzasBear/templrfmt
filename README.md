@@ -1,5 +1,8 @@
 # templrfmt
 
+[![Latest version](https://img.shields.io/crates/v/templrfmt.svg)](https://crates.io/crates/templrfmt)
+[![Documentation](https://docs.rs/templr_formatter/badge.svg)](https://docs.rs/templr_formatter/)
+
 Formatter for the [templr](https://github.com/PizzasBear/templr) templates library.
 
 ## Install
