@@ -24,6 +24,7 @@ struct Cli {
     #[arg(short, long, default_value = "false", requires = "stdin")]
     rustfmt: bool,
 
+    /// Doesn't print any dignostics.
     #[arg(
         short,
         long,
@@ -38,7 +39,8 @@ fn main() -> Result<()> {
 
     for pat in cli.input_patterns.iter().flatten() {
         for entry in glob(pat)? {
-            let mut file = File::options().read(true).write(true).open(entry?)?;
+            let entry = entry?;
+            let mut file = File::options().read(true).write(true).open(&entry)?;
             let mut source = String::new();
             file.read_to_string(&mut source)?;
             if cli.rustfmt {
@@ -51,6 +53,9 @@ fn main() -> Result<()> {
             file.set_len(0)?;
             file.seek(SeekFrom::Start(0))?;
             file.write_all(source.as_bytes())?;
+            if !cli.quiet {
+                println!("Formatted: `{}`", entry.display());
+            }
         }
     }
     if cli.stdin {
