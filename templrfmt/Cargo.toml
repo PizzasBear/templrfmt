@@ -1,6 +1,6 @@
 [package]
 name = "templrfmt"
-version = "0.1.0"
+version = "0.1.1"
 description = "Formatter for the templr templates library"
 homepage = "https://github.com/PizzasBear/templrfmt"
 repository = "https://github.com/PizzasBear/templrfmt"
@@ -10,7 +10,7 @@ readme = "../README.md"
 edition = "2021"
 
 [dependencies]
-templr_formatter = { path = "../templr_formatter", version = "0.1" }
+templr_formatter = { path = "../templr_formatter", version = "0.1.0" }
 rustfmt-wrapper = "0.2"
 anyhow = "1.0"
 clap = { version = "4.4", features = ["derive"] }
