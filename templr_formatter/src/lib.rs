@@ -61,7 +61,7 @@ pub fn unparse(file: &File) -> String {
 pub fn unparse_templ(mac: &Macro, init_indent: usize) -> Option<String> {
     let mut p = Printer::new(mac.begin_span());
     p.cbox(init_indent as _);
-    match p.templ_macro(mac, false) {
+    match p.templ_macro(mac, false) || p.templ_attrs_macro(mac, false) {
         true => {
             p.end();
             Some(p.eof())

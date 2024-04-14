@@ -12,6 +12,54 @@ use crate::{
 };
 
 impl Printer {
+    pub fn templ_attrs_macro(&mut self, mac: &syn::Macro, semicolon: bool) -> bool {
+        struct Attrs(Vec<Attr>);
+
+        impl syn::parse::Parse for Attrs {
+            fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+                let mut attrs = vec![];
+                while !input.is_empty() {
+                    attrs.push(input.parse()?);
+                }
+                Ok(Self(attrs))
+            }
+        }
+
+        if !(mac.path.segments.last())
+            .is_some_and(|segment| segment.ident == "attrs" && segment.arguments.is_none())
+        {
+            return false;
+        }
+        let body: Attrs = match syn::parse2(mac.tokens.clone()) {
+            Ok(body) => body,
+            Err(_err) => {
+                return false;
+            }
+        };
+
+        self.cbox(INDENT);
+        self.path(&mac.path, PathKind::Simple);
+        self.word("! {");
+        self.cbox(0);
+        for attr in &body.0 {
+            self.templ_attr(attr);
+        }
+        self.flush_comments(mac.delimiter.span().close(), body.0.is_empty(), true);
+        if !body.0.is_empty() {
+            self.space();
+            self.offset(-INDENT);
+        }
+        self.end();
+        self.word("}");
+        self.end();
+
+        if semicolon {
+            self.word(";");
+        }
+
+        true
+    }
+
     pub fn templ_macro(&mut self, mac: &syn::Macro, semicolon: bool) -> bool {
         if !(mac.path.segments.last())
             .is_some_and(|segment| segment.ident == "templ" && segment.arguments.is_none())

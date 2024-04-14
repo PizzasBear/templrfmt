@@ -18,6 +18,8 @@ impl Printer {
                 return;
             } else if self.templ_macro(mac, semicolon) {
                 return;
+            } else if self.templ_attrs_macro(mac, semicolon) {
+                return;
             }
         }
         self.path(&mac.path, PathKind::Simple);
